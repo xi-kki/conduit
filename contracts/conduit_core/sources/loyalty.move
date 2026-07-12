@@ -99,7 +99,7 @@ module conduit_core::loyalty {
             id: object::new(ctx),
             accounts: table::new(ctx),
             total_points_distributed: 0,
-            rewards: vector::empty(),
+            rewards: vector[],
         };
         transfer::share_object(registry);
     }
