@@ -1,309 +1,317 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { useParams } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { formatSui, formatDate, formatTime } from "@/lib/utils";
-import { useConduitWallet } from "@/lib/hooks";
-import {
-  Calendar,
-  Clock,
-  MapPin,
-  Users,
+import { useState, useEffect } from 'react';
+import { useParams } from 'next/navigation';
+import { useConduit } from '@/lib/useConduit';
+import Link from 'next/link';
+import { 
+  Calendar, 
+  MapPin, 
+  Users, 
+  Shield, 
+  Zap, 
+  ArrowRight,
   Ticket,
-  Share2,
-  Heart,
-  ArrowLeft,
   ExternalLink,
-  CheckCircle,
-  AlertCircle,
-  Loader2,
+  Check,
+  Clock,
   Wallet,
-} from "lucide-react";
-import Link from "next/link";
-import type { Event } from "@/lib/types";
-
-// Mock event data
-const MOCK_EVENT: Event = {
-  id: "1",
-  name: "Sui Builder House SF",
-  description:
-    "Join the Sui community for a day of building, learning, and connecting with fellow developers. Features workshops, talks, and networking opportunities with core contributors and ecosystem projects.",
-  image_url: "",
-  start_time: Date.now() + 86400000 * 3,
-  end_time: Date.now() + 86400000 * 4,
-  venue: "San Francisco, CA",
-  organizer: "0x1234567890abcdef",
-  ticket_price: 0,
-  resale_price_cap: 0,
-  royalty_bps: 500,
-  total_supply: 200,
-  tickets_sold: 156,
-  category: "meetup",
-  is_active: true,
-};
+} from 'lucide-react';
 
 export default function EventDetailPage() {
   const params = useParams();
-  const { isConnected, connectWallet } = useConduitWallet();
-  const [isPurchasing, setIsPurchasing] = useState(false);
-  const [purchaseSuccess, setPurchaseSuccess] = useState(false);
+  const eventId = params.id as string;
+  const { 
+    fetchEvent, 
+    purchaseTicket, 
+    claimFreeTicket,
+    isConnected, 
+    connectWallet,
+    truncateAddress 
+  } = useConduit();
+  
+  const [event, setEvent] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [purchasing, setPurchasing] = useState(false);
+  const [selectedTier, setSelectedTier] = useState<'GA' | 'VIP' | 'EARLY'>('GA');
 
-  // In production, fetch event by params.id
-  const event = MOCK_EVENT;
-  const spotsLeft = event.total_supply - event.tickets_sold;
-  const isSoldOut = spotsLeft === 0;
-  const isFree = event.ticket_price === 0;
-  const soldPercentage = (event.tickets_sold / event.total_supply) * 100;
+  useEffect(() => {
+    if (eventId) {
+      fetchEvent(eventId).then(setEvent).finally(() => setLoading(false));
+    }
+  }, [eventId, fetchEvent]);
 
   const handlePurchase = async () => {
     if (!isConnected) {
       connectWallet();
       return;
     }
-
-    setIsPurchasing(true);
-    // Simulate purchase
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    setIsPurchasing(false);
-    setPurchaseSuccess(true);
+    
+    setPurchasing(true);
+    try {
+      const price = selectedTier === 'VIP' 
+        ? (event.ticket_price * 3) 
+        : selectedTier === 'EARLY' 
+        ? (event.ticket_price * 0.8) 
+        : event.ticket_price;
+      
+      if (price === 0) {
+        await claimFreeTicket(eventId, selectedTier);
+      } else {
+        await purchaseTicket(eventId, price, selectedTier);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+    setPurchasing(false);
   };
 
-  return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Back Button */}
-      <Link
-        href="/events"
-        className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-6"
-      >
-        <ArrowLeft className="h-4 w-4 mr-2" />
-        Back to Events
-      </Link>
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#0a0a12] flex items-center justify-center">
+        <div className="w-12 h-12 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
-      <div className="grid lg:grid-cols-3 gap-8">
-        {/* Main Content */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Event Image */}
-          <div className="relative aspect-[16/9] rounded-xl overflow-hidden bg-gradient-to-br from-conduit-500 to-conduit-700">
-            {event.image_url ? (
-              <img
-                src={event.image_url}
-                alt={event.name}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <Ticket className="h-24 w-24 text-white/30" />
-              </div>
-            )}
-            <div className="absolute top-4 left-4 flex gap-2">
-              {isFree ? (
-                <Badge variant="free" className="text-lg px-4 py-1">
-                  Free
-                </Badge>
-              ) : (
-                <Badge className="text-lg px-4 py-1">
-                  {formatSui(event.ticket_price)} SUI
-                </Badge>
-              )}
-            </div>
-          </div>
-
-          {/* Event Details */}
-          <div>
-            <div className="flex items-start justify-between">
-              <div>
-                <Badge variant="secondary" className="mb-2">
-                  {event.category}
-                </Badge>
-                <h1 className="text-3xl font-bold">{event.name}</h1>
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" size="icon">
-                  <Heart className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" size="icon">
-                  <Share2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-
-            <p className="text-muted-foreground mt-4 leading-relaxed">
-              {event.description}
-            </p>
-          </div>
-
-          {/* Event Info */}
-          <Card>
-            <CardContent className="p-6 space-y-4">
-              <h3 className="font-semibold text-lg">Event Details</h3>
-              
-              <div className="grid gap-4">
-                <div className="flex items-center">
-                  <Calendar className="h-5 w-5 mr-3 text-muted-foreground" />
-                  <div>
-                    <div className="font-medium">{formatDate(event.start_time)}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {formatTime(event.start_time)} - {formatTime(event.end_time)}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center">
-                  <MapPin className="h-5 w-5 mr-3 text-muted-foreground" />
-                  <div>
-                    <div className="font-medium">{event.venue}</div>
-                    <div className="text-sm text-muted-foreground">
-                      View on map
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center">
-                  <Users className="h-5 w-5 mr-3 text-muted-foreground" />
-                  <div>
-                    <div className="font-medium">
-                      {event.tickets_sold} / {event.total_supply} tickets claimed
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      {spotsLeft} spots remaining
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Organizer */}
-          <Card>
-            <CardContent className="p-6">
-              <h3 className="font-semibold text-lg mb-4">Organizer</h3>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-conduit-100 flex items-center justify-center">
-                    <span className="text-conduit-600 font-medium">S</span>
-                  </div>
-                  <div>
-                    <div className="font-medium">Sui Foundation</div>
-                    <div className="text-sm text-muted-foreground">
-                      {event.organizer.slice(0, 10)}...{event.organizer.slice(-4)}
-                    </div>
-                  </div>
-                </div>
-                <Button variant="outline" size="sm">
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  View Profile
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+  if (!event) {
+    return (
+      <div className="min-h-screen bg-[#0a0a12] flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-3xl font-bold text-white mb-4">Event Not Found</h1>
+          <p className="text-gray-400 mb-6">This event may have been removed or doesn&apos;t exist.</p>
+          <Link href="/events">
+            <button className="px-6 py-3 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-xl text-white font-medium">
+              Browse Events
+            </button>
+          </Link>
         </div>
+      </div>
+    );
+  }
 
-        {/* Sidebar - Ticket Purchase */}
-        <div className="lg:col-span-1">
-          <Card className="sticky top-24">
-            <CardContent className="p-6">
-              <h3 className="font-semibold text-lg mb-4">Get Tickets</h3>
+  const soldPercentage = event.total_supply > 0 
+    ? Math.round((event.tickets_sold / event.total_supply) * 100) 
+    : 0;
+  const remaining = event.total_supply - event.tickets_sold;
 
-              {/* Price */}
-              <div className="mb-6">
-                {isFree ? (
-                  <div className="text-3xl font-bold text-sui-600">Free</div>
-                ) : (
-                  <div className="text-3xl font-bold">
-                    {formatSui(event.ticket_price)}{" "}
-                    <span className="text-lg text-muted-foreground">SUI</span>
-                  </div>
-                )}
+  const tiers = [
+    { 
+      id: 'GA', 
+      name: 'General Admission', 
+      price: event.ticket_price,
+      perks: ['Event access', 'NFT ticket proof', 'On-chain receipt'],
+    },
+    { 
+      id: 'VIP', 
+      name: 'VIP Access', 
+      price: event.ticket_price * 3,
+      perks: ['Priority entry', 'Exclusive merch NFT', 'Backstage meet & greet', 'All GA perks'],
+    },
+    { 
+      id: 'EARLY', 
+      name: 'Early Bird', 
+      price: event.ticket_price * 0.8,
+      perks: ['20% discount', 'Limited edition NFT', 'Event access'],
+    },
+  ];
+
+  const selectedTierData = tiers.find(t => t.id === selectedTier)!;
+
+  return (
+    <div className="min-h-screen bg-[#0a0a12]">
+      {/* Event Header */}
+      <div className="relative border-b border-white/5 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 via-transparent to-cyan-500/10" />
+        <div className="relative max-w-6xl mx-auto px-4 py-12">
+          <div className="flex flex-col md:flex-row gap-8">
+            {/* Event Info */}
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="px-3 py-1 rounded-full bg-purple-500/20 text-purple-300 text-xs font-medium">
+                  On-Chain Event
+                </span>
+                <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-medium">
+                  Verified
+                </span>
+              </div>
+              
+              <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
+                {event.name}
+              </h1>
+              
+              <p className="text-gray-400 text-lg mb-6 max-w-2xl">
+                {event.description}
+              </p>
+
+              {/* Event Meta */}
+              <div className="flex flex-wrap gap-6 text-gray-300">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-purple-400" />
+                  <span>{formatDate(event.start_time)}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-5 w-5 text-cyan-400" />
+                  <span>{event.venue || 'TBA'}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Users className="h-5 w-5 text-blue-400" />
+                  <span>{event.tickets_sold} / {event.total_supply} tickets sold</span>
+                </div>
               </div>
 
-              {/* Availability Bar */}
-              <div className="mb-6">
-                <div className="flex justify-between text-sm mb-2">
-                  <span className="text-muted-foreground">Availability</span>
-                  <span className="font-medium">
-                    {Math.round(soldPercentage)}% claimed
-                  </span>
+              {/* Organizer */}
+              <div className="mt-6 flex items-center gap-3">
+                <div className="h-8 w-8 rounded-full bg-white/10 flex items-center justify-center">
+                  <span className="text-xs text-gray-400">ORG</span>
                 </div>
-                <div className="h-2 bg-muted rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-conduit-600 transition-all"
-                    style={{ width: `${soldPercentage}%` }}
-                  />
-                </div>
-                <div className="text-sm text-muted-foreground mt-1">
-                  {spotsLeft} spots left
-                </div>
-              </div>
-
-              {/* Purchase Button */}
-              {purchaseSuccess ? (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 text-sui-600">
-                    <CheckCircle className="h-5 w-5" />
-                    <span className="font-medium">Ticket Claimed!</span>
-                  </div>
-                  <Link href="/my-tickets">
-                    <Button className="w-full" variant="outline">
-                      View My Tickets
-                    </Button>
+                <div>
+                  <p className="text-sm text-gray-500">Organized by</p>
+                  <Link href={`/organizer/${event.organizer}`}>
+                    <p className="text-sm text-white font-mono hover:text-purple-400 transition-colors">
+                      {truncateAddress(event.organizer)}
+                    </p>
                   </Link>
                 </div>
-              ) : isSoldOut ? (
-                <Button className="w-full" disabled>
-                  Sold Out
-                </Button>
-              ) : (
-                <Button
-                  className="w-full"
-                  size="lg"
-                  onClick={handlePurchase}
-                  disabled={isPurchasing}
-                >
-                  {isPurchasing ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      {isConnected ? "Processing..." : "Connecting..."}
-                    </>
-                  ) : isConnected ? (
-                    isFree ? (
-                      "Claim Free Ticket"
-                    ) : (
-                      `Buy for ${formatSui(event.ticket_price)} SUI`
-                    )
-                  ) : (
-                    "Connect Wallet to Buy"
-                  )}
-                </Button>
-              )}
+              </div>
+            </div>
 
-              {/* Resale Info */}
-              {!isFree && event.resale_price_cap > 0 && (
-                <div className="mt-4 p-3 bg-muted rounded-lg">
-                  <div className="flex items-start gap-2">
-                    <AlertCircle className="h-4 w-4 mt-0.5 text-muted-foreground" />
-                    <div className="text-sm">
-                      <div className="font-medium">Resale Protected</div>
-                      <div className="text-muted-foreground">
-                        Max resale price: {formatSui(event.resale_price_cap)} SUI
-                      </div>
-                    </div>
+            {/* Purchase Card */}
+            <div className="w-full md:w-96">
+              <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-6 sticky top-24">
+                {/* Fill Rate */}
+                <div className="mb-6">
+                  <div className="flex justify-between text-sm mb-2">
+                    <span className="text-gray-400">{soldPercentage}% sold</span>
+                    <span className="text-white font-medium">{remaining} left</span>
+                  </div>
+                  <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-gradient-to-r from-purple-500 to-cyan-500 rounded-full transition-all"
+                      style={{ width: `${soldPercentage}%` }}
+                    />
                   </div>
                 </div>
-              )}
 
-              {/* Royalty Info */}
-              {event.royalty_bps > 0 && (
-                <div className="mt-4 text-sm text-muted-foreground text-center">
-                  {(event.royalty_bps / 100).toFixed(1)}% royalty on resale
+                {/* Tier Selection */}
+                <div className="space-y-3 mb-6">
+                  {tiers.map((tier) => (
+                    <button
+                      key={tier.id}
+                      onClick={() => setSelectedTier(tier.id as any)}
+                      className={`w-full p-4 rounded-xl border text-left transition-all ${
+                        selectedTier === tier.id
+                          ? 'border-purple-500 bg-purple-500/10'
+                          : 'border-white/10 hover:border-white/20'
+                      }`}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="text-white font-medium">{tier.name}</p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {tier.perks.slice(0, 2).join(' • ')}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-white font-bold">
+                            {tier.price === 0 ? 'FREE' : `${(tier.price / 1_000_000_000).toFixed(1)} SUI`}
+                          </p>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
                 </div>
-              )}
-            </CardContent>
-          </Card>
+
+                {/* CTA */}
+                <button
+                  onClick={handlePurchase}
+                  disabled={purchasing || remaining <= 0}
+                  className="w-full py-4 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-xl text-white font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed hover:from-purple-600 hover:to-cyan-600 transition-all flex items-center justify-center gap-2"
+                >
+                  {purchasing ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Minting Ticket...
+                    </>
+                  ) : remaining <= 0 ? (
+                    'Sold Out'
+                  ) : !isConnected ? (
+                    <>
+                      <Wallet className="h-5 w-5" />
+                      Connect Wallet
+                    </>
+                  ) : selectedTierData.price === 0 ? (
+                    <>
+                      <Ticket className="h-5 w-5" />
+                      Claim Free Ticket
+                    </>
+                  ) : (
+                    <>
+                      <Ticket className="h-5 w-5" />
+                      Get Ticket — {(selectedTierData.price / 1_000_000_000).toFixed(1)} SUI
+                    </>
+                  )}
+                </button>
+
+                {/* Trust Signals */}
+                <div className="mt-4 flex items-center justify-center gap-4 text-xs text-gray-500">
+                  <div className="flex items-center gap-1">
+                    <Shield className="h-3 w-3" />
+                    <span>Verified on Sui</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Zap className="h-3 w-3" />
+                    <span>Instant mint</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Trust Section */}
+      <div className="max-w-6xl mx-auto px-4 py-12">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {[
+            {
+              icon: <Shield className="h-6 w-6 text-emerald-400" />,
+              title: 'Impossible to Fake',
+              desc: 'Your ticket is a unique NFT on the Sui blockchain. No one can duplicate it.',
+            },
+            {
+              icon: <Zap className="h-6 w-6 text-amber-400" />,
+              title: 'Instant Verification',
+              desc: 'Scan your QR at the door. On-chain check takes less than 2 seconds.',
+            },
+            {
+              icon: <Ticket className="h-6 w-6 text-purple-400" />,
+              title: 'Yours Forever',
+              desc: 'Even after the event, your ticket proves you were there. Collectible proof-of-attendance.',
+            },
+          ].map((item, i) => (
+            <div key={i} className="p-6 bg-white/[0.03] border border-white/5 rounded-xl text-center">
+              <div className="inline-flex h-12 w-12 rounded-xl bg-white/5 items-center justify-center mb-4">
+                {item.icon}
+              </div>
+              <h3 className="text-white font-semibold mb-2">{item.title}</h3>
+              <p className="text-sm text-gray-400">{item.desc}</p>
+            </div>
+          ))}
         </div>
       </div>
     </div>
   );
+}
+
+function formatDate(timestamp: number): string {
+  if (!timestamp) return 'TBA';
+  return new Date(timestamp * 1000).toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }

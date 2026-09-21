@@ -11,7 +11,9 @@ export const suiClient = new SuiClient({
 
 // Contract addresses (update after deployment)
 export const CONTRACT_ADDRESSES = {
-  conduit_core: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "",
+  conduit_core:
+    process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ||
+    "0x8fc1517bbec170628606e01cd07863df9de2feac39b8155d9a5409e279382481",
 };
 
 // Helper to check if contract is deployed

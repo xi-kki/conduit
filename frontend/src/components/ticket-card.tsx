@@ -3,8 +3,9 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { QRCode } from "@/components/qr-code";
 import { formatSui, formatDate, formatTime } from "@/lib/utils";
-import { Ticket, MapPin, Calendar, Clock, QrCode, CheckCircle } from "lucide-react";
+import { Ticket, MapPin, Calendar, Clock, CheckCircle } from "lucide-react";
 import type { Ticket as TicketType, Event } from "@/lib/types";
 
 interface TicketCardProps {
@@ -18,15 +19,13 @@ export function TicketCard({ ticket, event, onCheckIn }: TicketCardProps) {
 
   return (
     <Card className="overflow-hidden">
-      <div className="flex">
-        {/* Left: QR Code Placeholder */}
-        <div className="w-32 bg-gradient-to-br from-conduit-500 to-conduit-700 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg p-2">
-            <QrCode className="h-16 w-16 text-conduit-700" />
-          </div>
+      <div className="flex flex-col sm:flex-row">
+        {/* QR Code */}
+        <div className="w-full sm:w-36 bg-gradient-to-br from-conduit-500 to-conduit-700 flex items-center justify-center p-4">
+          <QRCode value={ticket.id} size={96} />
         </div>
 
-        {/* Right: Ticket Info */}
+        {/* Info */}
         <CardContent className="flex-1 p-4">
           <div className="flex items-start justify-between">
             <div className="flex-1">
@@ -43,7 +42,7 @@ export function TicketCard({ ticket, event, onCheckIn }: TicketCardProps) {
               </div>
 
               <h3 className="font-semibold text-lg">
-                {event?.name || `Event #${ticket.event_id.slice(0, 8)}`}
+                {event?.name || `Event #${ticket.event_id.slice(0, 10)}...`}
               </h3>
 
               {event && (
@@ -62,7 +61,7 @@ export function TicketCard({ ticket, event, onCheckIn }: TicketCardProps) {
                 </div>
               )}
 
-              <div className="mt-3 flex items-center text-sm text-muted-foreground">
+              <div className="mt-3 flex items-center text-sm text-muted-foreground font-mono">
                 <Ticket className="h-4 w-4 mr-2" />
                 Ticket #{ticket.ticket_number}
                 {!isFree && (

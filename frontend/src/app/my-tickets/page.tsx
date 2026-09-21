@@ -1,211 +1,149 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { TicketCard } from "@/components/ticket-card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { useConduitWallet } from "@/lib/hooks";
-import { Ticket, Wallet, Plus, ArrowRight } from "lucide-react";
-import Link from "next/link";
-import type { Ticket as TicketType, Event } from "@/lib/types";
-
-// Mock data
-const MOCK_TICKETS: TicketType[] = [
-  {
-    id: "t1",
-    event_id: "1",
-    ticket_number: 42,
-    tier: "GA",
-    purchase_price: 0,
-    original_owner: "0x1234",
-    checked_in: false,
-    is_used: false,
-  },
-  {
-    id: "t2",
-    event_id: "2",
-    ticket_number: 108,
-    tier: "VIP",
-    purchase_price: 50000000000,
-    original_owner: "0x1234",
-    checked_in: true,
-    is_used: true,
-  },
-];
-
-const MOCK_EVENTS: Record<string, Event> = {
-  "1": {
-    id: "1",
-    name: "Sui Builder House SF",
-    description: "Building day",
-    image_url: "",
-    start_time: Date.now() + 86400000 * 3,
-    end_time: Date.now() + 86400000 * 4,
-    venue: "San Francisco, CA",
-    organizer: "0x1234567890abcdef",
-    ticket_price: 0,
-    resale_price_cap: 0,
-    royalty_bps: 500,
-    total_supply: 200,
-    tickets_sold: 156,
-    category: "meetup",
-    is_active: true,
-  },
-  "2": {
-    id: "2",
-    name: "Web3 Conference 2024",
-    description: "Premier conference",
-    image_url: "",
-    start_time: Date.now() + 86400000 * 7,
-    end_time: Date.now() + 86400000 * 9,
-    venue: "New York, NY",
-    organizer: "0xabcdef1234567890",
-    ticket_price: 50000000000,
-    resale_price_cap: 75000000000,
-    royalty_bps: 1000,
-    total_supply: 500,
-    tickets_sold: 342,
-    category: "conference",
-    is_active: true,
-  },
-};
+import { useState, useEffect } from 'react';
+import { useConduit } from '@/lib/useConduit';
+import { TicketCard } from '@/components/ticket-card';
+import { Ticket, Wallet, ArrowRight, Calendar, Clock, Sparkles } from 'lucide-react';
+import Link from 'next/link';
 
 export default function MyTicketsPage() {
-  const { isConnected, connectWallet } = useConduitWallet();
-  const [activeTab, setActiveTab] = useState<"upcoming" | "past">("upcoming");
+  const { isConnected, address, connectWallet, myTickets: tickets, loadMyTickets, truncateAddress, events } = useConduit();
+  const [tab, setTab] = useState<'upcoming' | 'past' | 'all'>('upcoming');
 
-  // Filter tickets based on tab
-  const now = Date.now();
-  const upcomingTickets = MOCK_TICKETS.filter((t) => {
-    const event = MOCK_EVENTS[t.event_id];
-    return event && event.start_time > now && !t.checked_in;
+  useEffect(() => {
+    if (isConnected) loadMyTickets();
+  }, [isConnected, loadMyTickets]);
+
+  // Helper to get event time from ticket's event_id
+  const getEventTime = (ticket: any) => {
+    const event = events.find(e => e.id === ticket.event_id);
+    return event?.start_time || 0;
+  };
+
+  const now = Math.floor(Date.now() / 1000);
+  const upcoming = tickets.filter(t => {
+    const eventTime = getEventTime(t);
+    return eventTime > now && !t.is_used;
   });
+  const past = tickets.filter(t => getEventTime(t) <= now || t.is_used);
 
-  const pastTickets = MOCK_TICKETS.filter((t) => {
-    const event = MOCK_EVENTS[t.event_id];
-    return t.checked_in || (event && event.start_time <= now);
-  });
+  const displayTickets = tab === 'upcoming' ? upcoming : tab === 'past' ? past : tickets;
 
-  const displayTickets = activeTab === "upcoming" ? upcomingTickets : pastTickets;
-
+  // Not connected state
   if (!isConnected) {
     return (
-      <div className="container mx-auto px-4 py-16 text-center">
-        <div className="max-w-md mx-auto">
-          <div className="h-16 w-16 rounded-full bg-conduit-100 flex items-center justify-center mx-auto mb-4">
-            <Wallet className="h-8 w-8 text-conduit-600" />
+      <div className="min-h-screen bg-[#0a0a12] flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto px-4">
+          <div className="inline-flex h-20 w-20 rounded-2xl bg-white/5 items-center justify-center mb-6">
+            <Wallet className="h-10 w-10 text-gray-600" />
           </div>
-          <h1 className="text-2xl font-bold mb-2">Connect Your Wallet</h1>
-          <p className="text-muted-foreground mb-6">
-            Connect your wallet to view your tickets.
+          <h1 className="text-3xl font-bold text-white mb-3">
+            Your Tickets Await
+          </h1>
+          <p className="text-gray-400 mb-8">
+            Connect your wallet to see every ticket you own — 
+            each one a unique NFT, provably yours on Sui.
           </p>
-          <Button onClick={connectWallet} size="lg">
+          <button
+            onClick={connectWallet}
+            className="px-8 py-4 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-xl text-white font-semibold text-lg hover:from-purple-600 hover:to-cyan-600 transition-all"
+          >
             Connect Wallet
-          </Button>
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="min-h-screen bg-[#0a0a12]">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold">My Tickets</h1>
-          <p className="text-muted-foreground mt-2">
-            Your NFT tickets for upcoming and past events
-          </p>
-        </div>
-        <Link href="/events">
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            Browse Events
-          </Button>
-        </Link>
-      </div>
+      <div className="relative border-b border-white/5 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 via-transparent to-cyan-500/5" />
+        <div className="relative max-w-6xl mx-auto px-4 py-12">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div>
+              <h1 className="text-4xl font-bold text-white mb-2">
+                Your Collection
+              </h1>
+              <p className="text-gray-400">
+                {tickets.length === 0 
+                  ? "No tickets yet — your first NFT is one click away."
+                  : `${tickets.length} ticket${tickets.length !== 1 ? 's' : ''} in your wallet`
+                }
+              </p>
+            </div>
 
-      {/* Tabs */}
-      <div className="flex gap-4 mb-6">
-        <Button
-          variant={activeTab === "upcoming" ? "default" : "outline"}
-          onClick={() => setActiveTab("upcoming")}
-        >
-          Upcoming
-          {upcomingTickets.length > 0 && (
-            <Badge variant="secondary" className="ml-2">
-              {upcomingTickets.length}
-            </Badge>
-          )}
-        </Button>
-        <Button
-          variant={activeTab === "past" ? "default" : "outline"}
-          onClick={() => setActiveTab("past")}
-        >
-          Past
-          {pastTickets.length > 0 && (
-            <Badge variant="secondary" className="ml-2">
-              {pastTickets.length}
-            </Badge>
-          )}
-        </Button>
-      </div>
-
-      {/* Tickets List */}
-      {displayTickets.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center mb-4">
-            <Ticket className="h-8 w-8 text-muted-foreground" />
+            {/* Stats */}
+            <div className="flex gap-6">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-white">{upcoming.length}</div>
+                <div className="text-xs text-gray-500">Upcoming</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-white">{past.length}</div>
+                <div className="text-xs text-gray-500">Attended</div>
+              </div>
+            </div>
           </div>
-          <h3 className="text-lg font-medium text-muted-foreground">
-            {activeTab === "upcoming"
-              ? "No upcoming tickets"
-              : "No past tickets"}
-          </h3>
-          <p className="text-sm text-muted-foreground mt-1 mb-4">
-            {activeTab === "upcoming"
-              ? "Browse events to get your first ticket!"
-              : "Your attended events will appear here"}
-          </p>
-          {activeTab === "upcoming" && (
-            <Link href="/events">
-              <Button>
-                Browse Events
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
-          )}
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {displayTickets.map((ticket) => (
-            <TicketCard
-              key={ticket.id}
-              ticket={ticket}
-              event={MOCK_EVENTS[ticket.event_id]}
-            />
-          ))}
-        </div>
-      )}
 
-      {/* Stats */}
-      <div className="mt-12 grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="text-center p-4 rounded-lg bg-muted/50">
-          <div className="text-2xl font-bold">{MOCK_TICKETS.length}</div>
-          <div className="text-sm text-muted-foreground">Total Tickets</div>
+          {/* Tabs */}
+          <div className="flex gap-2 mt-6">
+            {(['upcoming', 'past', 'all'] as const).map(t => (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  tab === t
+                    ? 'bg-white/10 text-white'
+                    : 'text-gray-500 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                {t.charAt(0).toUpperCase() + t.slice(1)}
+                <span className="ml-1.5 text-xs opacity-60">
+                  {t === 'upcoming' ? upcoming.length : t === 'past' ? past.length : tickets.length}
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="text-center p-4 rounded-lg bg-muted/50">
-          <div className="text-2xl font-bold">{upcomingTickets.length}</div>
-          <div className="text-sm text-muted-foreground">Upcoming</div>
-        </div>
-        <div className="text-center p-4 rounded-lg bg-muted/50">
-          <div className="text-2xl font-bold">{pastTickets.length}</div>
-          <div className="text-sm text-muted-foreground">Attended</div>
-        </div>
-        <div className="text-center p-4 rounded-lg bg-muted/50">
-          <div className="text-2xl font-bold">0</div>
-          <div className="text-sm text-muted-foreground">Listed for Resale</div>
-        </div>
+      </div>
+
+      {/* Tickets Grid */}
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        {displayTickets.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {displayTickets.map((ticket) => (
+              <TicketCard key={ticket.id} ticket={ticket} />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-20">
+            <div className="inline-flex h-16 w-16 rounded-2xl bg-white/5 items-center justify-center mb-6">
+              <Ticket className="h-8 w-8 text-gray-600" />
+            </div>
+            <h3 className="text-xl font-semibold text-white mb-2">
+              {tab === 'upcoming' 
+                ? "No upcoming events"
+                : tab === 'past'
+                ? "No past events yet"
+                : "Your collection is empty"
+              }
+            </h3>
+            <p className="text-gray-500 mb-6 max-w-md mx-auto">
+              {tab === 'upcoming'
+                ? "Grab your first ticket and experience the future of event access."
+                : "Once you attend an event, it'll show up here — proof you were there, on-chain forever."
+              }
+            </p>
+            <Link href="/events">
+              <button className="px-6 py-3 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-xl text-white font-medium inline-flex items-center gap-2">
+                Find Events
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );

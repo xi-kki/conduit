@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatSui, formatDate, formatTime } from "@/lib/utils";
@@ -23,11 +22,10 @@ export function EventCard({ event }: EventCardProps) {
         {/* Image */}
         <div className="relative aspect-[16/9] overflow-hidden">
           {event.image_url ? (
-            <Image
+            <img
               src={event.image_url}
               alt={event.name}
-              fill
-              className="object-cover transition-transform group-hover:scale-105"
+              className="object-cover transition-transform group-hover:scale-105 w-full h-full"
             />
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-conduit-500 to-conduit-700 flex items-center justify-center">

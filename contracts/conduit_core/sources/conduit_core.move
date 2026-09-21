@@ -28,6 +28,10 @@ module conduit_core::conduit_core {
     const EInsufficientPayment: u64 = 6;
     const EInvalidRoyalty: u64 = 7;
     const EEventAlreadyEnded: u64 = 9;
+    const ETicketNotOwned: u64 = 10;
+    const ETicketAlreadyListed: u64 = 11;
+    const ETicketNotListed: u64 = 12;
+    const EPriceExceedsCap: u64 = 13;
 
     // ─── Constants ────────────────────────────────────────────
     
@@ -109,6 +113,25 @@ module conduit_core::conduit_core {
         buyer: address,
         price: u64,
         royalty_paid: u64,
+    }
+
+    /// Ticket listed for resale
+    public struct TicketListed has copy, drop {
+        ticket_id: ID,
+        event_id: ID,
+        seller: address,
+        price: u64,
+    }
+
+    /// Ticket resold on secondary market
+    public struct TicketResold has copy, drop {
+        ticket_id: ID,
+        event_id: ID,
+        seller: address,
+        buyer: address,
+        price: u64,
+        royalty_paid: u64,
+        platform_fee: u64,
     }
 
     public struct TicketCheckedIn has copy, drop {
@@ -306,6 +329,99 @@ module conduit_core::conduit_core {
         });
 
         ticket
+    }
+
+    // ─── Resale Marketplace ──────────────────────────────────
+
+    /// List a ticket for resale on the secondary market
+    public fun list_for_resale(
+        ticket: &Ticket,
+        event: &Event,
+        resale_price: u64,
+        _ctx: &mut TxContext
+    ) {
+        assert!(ticket.event_id == object::id(event), ETicketNotOwned);
+        assert!(!ticket.checked_in, EEventAlreadyEnded);
+        assert!(!ticket.is_used, EEventAlreadyEnded);
+        assert!(resale_price <= event.resale_price_cap, EPriceExceedsCap);
+        assert!(resale_price > 0, EInvalidPrice);
+
+        event::emit(TicketListed {
+            ticket_id: object::id(ticket),
+            event_id: object::id(event),
+            seller: ticket.original_owner,
+            price: resale_price,
+        });
+    }
+
+    /// Buy a ticket from the secondary market (resale)
+    public fun buy_from_resale(
+        ticket: &mut Ticket,
+        event: &Event,
+        payment: Coin<SUI>,
+        resale_price: u64,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        assert!(ticket.event_id == object::id(event), ETicketNotOwned);
+        assert!(!ticket.checked_in, EEventAlreadyEnded);
+        assert!(!ticket.is_used, EEventAlreadyEnded);
+        assert!(resale_price <= event.resale_price_cap, EPriceExceedsCap);
+        assert!(coin::value(&payment) >= resale_price, EInsufficientPayment);
+
+        // Calculate fees
+        let royalty_amount = (resale_price * event.royalty_bps) / BPS_DENOMINATOR;
+        let platform_fee = (resale_price * event.platform_fee_bps) / BPS_DENOMINATOR;
+        let seller_amount = resale_price - royalty_amount - platform_fee;
+
+        let mut payment_balance = coin::into_balance(payment);
+
+        // Pay the seller
+        let seller_payment = coin::from_balance(
+            balance::split(&mut payment_balance, seller_amount),
+            ctx
+        );
+        transfer::public_transfer(seller_payment, ticket.original_owner);
+
+        // Pay royalty to organizer
+        if (royalty_amount > 0) {
+            let royalty_payment = coin::from_balance(
+                balance::split(&mut payment_balance, royalty_amount),
+                ctx
+            );
+            transfer::public_transfer(royalty_payment, event.organizer);
+        };
+
+        // Pay platform fee
+        if (platform_fee > 0) {
+            let platform_payment = coin::from_balance(
+                balance::split(&mut payment_balance, platform_fee),
+                ctx
+            );
+            transfer::public_transfer(platform_payment, event.organizer);
+        };
+
+        // Handle any dust/refund
+        if (balance::value(&payment_balance) > 0) {
+            let refund_coin = coin::from_balance(payment_balance, ctx);
+            transfer::public_transfer(refund_coin, tx_context::sender(ctx));
+        } else {
+            balance::destroy_zero(payment_balance);
+        };
+
+        // Update ticket ownership
+        ticket.original_owner = tx_context::sender(ctx);
+        ticket.purchase_price = resale_price;
+
+        event::emit(TicketResold {
+            ticket_id: object::id(ticket),
+            event_id: object::id(event),
+            seller: ticket.original_owner,
+            buyer: tx_context::sender(ctx),
+            price: resale_price,
+            royalty_paid: royalty_amount,
+            platform_fee,
+        });
     }
 
     // ─── Check-in ─────────────────────────────────────────────

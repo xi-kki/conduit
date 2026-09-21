@@ -6,9 +6,10 @@ const events: any[] = [];
 // GET /api/events/:id - Get event by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const event = events.find((e) => e.id === params.id);
+  const { id } = await params;
+  const event = events.find((e) => e.id === id);
 
   if (!event) {
     return NextResponse.json({ error: "Event not found" }, { status: 404 });
@@ -20,9 +21,10 @@ export async function GET(
 // PATCH /api/events/:id - Update event
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const eventIndex = events.findIndex((e) => e.id === params.id);
+  const { id } = await params;
+  const eventIndex = events.findIndex((e) => e.id === id);
 
   if (eventIndex === -1) {
     return NextResponse.json({ error: "Event not found" }, { status: 404 });
@@ -44,9 +46,10 @@ export async function PATCH(
 // DELETE /api/events/:id - Delete event
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const eventIndex = events.findIndex((e) => e.id === params.id);
+  const { id } = await params;
+  const eventIndex = events.findIndex((e) => e.id === id);
 
   if (eventIndex === -1) {
     return NextResponse.json({ error: "Event not found" }, { status: 404 });

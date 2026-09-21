@@ -1,422 +1,280 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { useConduitWallet } from "@/lib/hooks";
-import { EVENT_CATEGORIES } from "@/lib/types";
-import type { EventCategory } from "@/lib/types";
-import {
-  Calendar,
-  Clock,
-  MapPin,
-  Ticket,
-  DollarSign,
-  Percent,
-  Users,
-  Image,
-  FileText,
-  Loader2,
-  CheckCircle,
-  ArrowLeft,
-  Info,
-  Wallet,
-} from "lucide-react";
-import Link from "next/link";
+import { useState } from 'react';
+import { useConduit } from '@/lib/useConduit';
+import { useRouter } from 'next/navigation';
+import { 
+  Calendar, 
+  MapPin, 
+  DollarSign, 
+  Users, 
+  Percent, 
+  ArrowRight,
+  Sparkles,
+  Shield,
+  Zap,
+  Check,
+} from 'lucide-react';
 
 export default function CreateEventPage() {
   const router = useRouter();
-  const { isConnected, connectWallet } = useConduitWallet();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitSuccess, setSubmitSuccess] = useState(false);
+  const { createEvent, isConnected, connectWallet } = useConduit();
+  const [submitting, setSubmitting] = useState(false);
+  const [created, setCreated] = useState(false);
 
-  // Form state
   const [form, setForm] = useState({
-    name: "",
-    description: "",
-    image_url: "",
-    start_date: "",
-    start_time: "",
-    end_date: "",
-    end_time: "",
-    venue: "",
-    category: "meetup" as EventCategory,
-    ticket_price: "",
-    total_supply: "",
-    resale_price_cap: "",
-    royalty_bps: "500",
+    name: '',
+    description: '',
+    date: '',
+    endDate: '',
+    location: '',
+    ticketPrice: 0,
+    totalSupply: 100,
+    royaltyBps: 1000,
+    maxResalePrice: 0,
   });
 
-  const updateForm = (field: string, value: string) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
-  };
+  const update = (field: string, value: any) => setForm(prev => ({ ...prev, [field]: value }));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!isConnected) {
       connectWallet();
       return;
     }
-
-    setIsSubmitting(true);
-    // Simulate contract interaction
-    await new Promise((resolve) => setTimeout(resolve, 3000));
-    setIsSubmitting(false);
-    setSubmitSuccess(true);
     
-    // Redirect after success
-    setTimeout(() => {
-      router.push("/events");
-    }, 2000);
+    setSubmitting(true);
+    try {
+      const txBytes = await createEvent({
+        name: form.name,
+        description: form.description,
+        imageUrl: "",
+        startTime: Math.floor(new Date(form.date).getTime() / 1000),
+        endTime: form.endDate ? Math.floor(new Date(form.endDate).getTime() / 1000) : Math.floor(new Date(form.date).getTime() / 1000) + 86400,
+        venue: form.location,
+        ticketPrice: form.ticketPrice * 1_000_000_000,
+        resalePriceCap: form.maxResalePrice * 1_000_000_000,
+        totalSupply: form.totalSupply,
+        royaltyBps: form.royaltyBps,
+        category: "",
+      });
+      setCreated(true);
+      setTimeout(() => router.push('/dashboard'), 2000);
+    } catch (err) {
+      console.error(err);
+    }
+    setSubmitting(false);
   };
 
-  if (!isConnected) {
+  if (created) {
     return (
-      <div className="container mx-auto px-4 py-16 text-center">
-        <div className="max-w-md mx-auto">
-          <div className="h-16 w-16 rounded-full bg-conduit-100 flex items-center justify-center mx-auto mb-4">
-            <Wallet className="h-8 w-8 text-conduit-600" />
+      <div className="min-h-screen bg-[#0a0a12] flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-flex h-20 w-20 rounded-2xl bg-gradient-to-br from-purple-500 to-cyan-500 items-center justify-center mb-6">
+            <Check className="h-10 w-10 text-white" />
           </div>
-          <h1 className="text-2xl font-bold mb-2">Connect Your Wallet</h1>
-          <p className="text-muted-foreground mb-6">
-            You need to connect your wallet to create an event on Conduit.
-          </p>
-          <Button onClick={connectWallet} size="lg">
-            Connect Wallet
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  if (submitSuccess) {
-    return (
-      <div className="container mx-auto px-4 py-16 text-center">
-        <div className="max-w-md mx-auto">
-          <div className="h-16 w-16 rounded-full bg-sui-100 flex items-center justify-center mx-auto mb-4">
-            <CheckCircle className="h-8 w-8 text-sui-600" />
-          </div>
-          <h1 className="text-2xl font-bold mb-2">Event Created!</h1>
-          <p className="text-muted-foreground mb-6">
-            Your event has been submitted for review. You&apos;ll be redirected shortly.
-          </p>
+          <h1 className="text-3xl font-bold text-white mb-2">Event Created!</h1>
+          <p className="text-gray-400">Your event is now live on Sui testnet.</p>
+          <p className="text-sm text-gray-500 mt-2">Redirecting to dashboard...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-3xl">
-      {/* Back Button */}
-      <Link
-        href="/events"
-        className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-6"
-      >
-        <ArrowLeft className="h-4 w-4 mr-2" />
-        Back to Events
-      </Link>
-
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">Create Event</h1>
-        <p className="text-muted-foreground mt-2">
-          Fill in the details to create your event on Conduit
-        </p>
+    <div className="min-h-screen bg-[#0a0a12]">
+      {/* Hero */}
+      <div className="relative border-b border-white/5 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 via-transparent to-cyan-500/10" />
+        <div className="relative max-w-4xl mx-auto px-4 py-12">
+          <h1 className="text-4xl font-bold text-white mb-2">
+            Create Your Event
+          </h1>
+          <p className="text-gray-400 text-lg">
+            Fraud-proof tickets in under 5 minutes. No coding required.
+          </p>
+        </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Basic Info */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Basic Information
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+      <div className="max-w-4xl mx-auto px-4 py-12">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="lg:col-span-2 space-y-6">
+            {/* Event Name */}
             <div>
-              <label className="text-sm font-medium mb-2 block">
-                Event Name *
+              <label className="block text-sm font-medium text-white mb-2">
+                Event Name
               </label>
-              <Input
-                placeholder="e.g., Sui Builder House SF"
+              <input
+                type="text"
                 value={form.name}
-                onChange={(e) => updateForm("name", e.target.value)}
+                onChange={(e) => update('name', e.target.value)}
+                placeholder="e.g. Sui Builder House NYC"
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500/50 transition-colors"
                 required
               />
             </div>
 
+            {/* Description */}
             <div>
-              <label className="text-sm font-medium mb-2 block">
-                Description *
+              <label className="block text-sm font-medium text-white mb-2">
+                Description
               </label>
               <textarea
-                className="w-full min-h-[120px] rounded-lg border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                placeholder="Tell people about your event..."
                 value={form.description}
-                onChange={(e) => updateForm("description", e.target.value)}
-                required
+                onChange={(e) => update('description', e.target.value)}
+                placeholder="Tell attendees what to expect..."
+                rows={3}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500/50 transition-colors resize-none"
               />
             </div>
 
-            <div>
-              <label className="text-sm font-medium mb-2 block">
-                Event Image URL
-              </label>
-              <Input
-                type="url"
-                placeholder="https://..."
-                value={form.image_url}
-                onChange={(e) => updateForm("image_url", e.target.value)}
-              />
-            </div>
-
-            <div>
-              <label className="text-sm font-medium mb-2 block">
-                Category *
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {EVENT_CATEGORIES.map((cat) => (
-                  <Button
-                    key={cat.value}
-                    type="button"
-                    variant={
-                      form.category === cat.value ? "default" : "outline"
-                    }
-                    size="sm"
-                    onClick={() => updateForm("category", cat.value)}
-                  >
-                    {cat.emoji} {cat.label}
-                  </Button>
-                ))}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Date & Location */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
-              Date & Location
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            {/* Date & Location */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium mb-2 block">
-                  Start Date *
+                <label className="block text-sm font-medium text-white mb-2">
+                  <Calendar className="inline h-4 w-4 mr-1" />
+                  Start Date & Time
                 </label>
-                <Input
-                  type="date"
-                  value={form.start_date}
-                  onChange={(e) => updateForm("start_date", e.target.value)}
+                <input
+                  type="datetime-local"
+                  value={form.date}
+                  onChange={(e) => update('date', e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500/50 transition-colors"
                   required
                 />
               </div>
               <div>
-                <label className="text-sm font-medium mb-2 block">
-                  Start Time *
+                <label className="block text-sm font-medium text-white mb-2">
+                  <MapPin className="inline h-4 w-4 mr-1" />
+                  Venue / Location
                 </label>
-                <Input
-                  type="time"
-                  value={form.start_time}
-                  onChange={(e) => updateForm("start_time", e.target.value)}
-                  required
+                <input
+                  type="text"
+                  value={form.location}
+                  onChange={(e) => update('location', e.target.value)}
+                  placeholder="e.g. NYC, Online, ETH Denver"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500/50 transition-colors"
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            {/* Pricing & Supply */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="text-sm font-medium mb-2 block">
-                  End Date *
-                </label>
-                <Input
-                  type="date"
-                  value={form.end_date}
-                  onChange={(e) => updateForm("end_date", e.target.value)}
-                  required
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-2 block">
-                  End Time *
-                </label>
-                <Input
-                  type="time"
-                  value={form.end_time}
-                  onChange={(e) => updateForm("end_time", e.target.value)}
-                  required
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="text-sm font-medium mb-2 block">
-                Venue / Location *
-              </label>
-              <Input
-                placeholder="e.g., San Francisco, CA or Virtual"
-                value={form.venue}
-                onChange={(e) => updateForm("venue", e.target.value)}
-                required
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Ticketing */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Ticket className="h-5 w-5" />
-              Ticketing
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium mb-2 block">
+                <label className="block text-sm font-medium text-white mb-2">
+                  <DollarSign className="inline h-4 w-4 mr-1" />
                   Ticket Price (SUI)
                 </label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0 for free"
-                  value={form.ticket_price}
-                  onChange={(e) => updateForm("ticket_price", e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Leave empty or 0 for free events
-                </p>
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-2 block">
-                  Total Supply *
-                </label>
-                <Input
-                  type="number"
-                  min="1"
-                  placeholder="100"
-                  value={form.total_supply}
-                  onChange={(e) => updateForm("total_supply", e.target.value)}
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="p-3 bg-muted rounded-lg">
-              <div className="flex items-start gap-2">
-                <Info className="h-4 w-4 mt-0.5 text-muted-foreground" />
-                <div className="text-sm">
-                  <div className="font-medium">Gas-Free for Attendees</div>
-                  <div className="text-muted-foreground">
-                    You&apos;ll pay the gas fees for all ticket mints. Your attendees never see blockchain complexity.
-                  </div>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Secondary Market */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <DollarSign className="h-5 w-5" />
-              Secondary Market Settings
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium mb-2 block">
-                  Max Resale Price (SUI)
-                </label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0 for no cap"
-                  value={form.resale_price_cap}
-                  onChange={(e) =>
-                    updateForm("resale_price_cap", e.target.value)
-                  }
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Enforced by smart contract
-                </p>
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-2 block">
-                  Royalty (%)
-                </label>
-                <Input
+                <input
                   type="number"
                   step="0.1"
                   min="0"
-                  max="15"
-                  placeholder="5"
-                  value={form.royalty_bps}
-                  onChange={(e) => {
-                    const percent = parseFloat(e.target.value) || 0;
-                    updateForm("royalty_bps", String(percent * 100));
-                  }}
+                  value={form.ticketPrice}
+                  onChange={(e) => update('ticketPrice', parseFloat(e.target.value) || 0)}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500/50 transition-colors"
                 />
-                <p className="text-xs text-muted-foreground mt-1">
-                  0-15% royalty on every resale
-                </p>
+                <p className="text-xs text-gray-500 mt-1">Set to 0 for free events</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-white mb-2">
+                  <Users className="inline h-4 w-4 mr-1" />
+                  Total Tickets
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={form.totalSupply}
+                  onChange={(e) => update('totalSupply', parseInt(e.target.value) || 100)}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500/50 transition-colors"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-white mb-2">
+                  <Percent className="inline h-4 w-4 mr-1" />
+                  Royalty (%)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="50"
+                  step="0.5"
+                  value={form.royaltyBps / 100}
+                  onChange={(e) => update('royaltyBps', Math.round(parseFloat(e.target.value) * 100) || 0)}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500/50 transition-colors"
+                />
+                <p className="text-xs text-gray-500 mt-1">You earn on every resale</p>
               </div>
             </div>
 
-            <div className="p-3 bg-sui-50 rounded-lg border border-sui-200">
-              <div className="flex items-start gap-2">
-                <CheckCircle className="h-4 w-4 mt-0.5 text-sui-600" />
-                <div className="text-sm">
-                  <div className="font-medium text-sui-900">
-                    Royalties Enforced On-Chain
-                  </div>
-                  <div className="text-sui-700">
-                    Every resale automatically routes{" "}
-                    {((parseInt(form.royalty_bps) || 500) / 100).toFixed(1)}% to
-                    the creator wallet. No exceptions.
-                  </div>
-                </div>
-              </div>
+            {/* Max Resale Price */}
+            <div>
+              <label className="block text-sm font-medium text-white mb-2">
+                Max Resale Price (SUI) — Optional
+              </label>
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                value={form.maxResalePrice}
+                onChange={(e) => update('maxResalePrice', parseFloat(e.target.value) || 0)}
+                placeholder="Leave 0 for no cap"
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500/50 transition-colors"
+              />
+              <p className="text-xs text-gray-500 mt-1">Set a ceiling to prevent scalper pricing</p>
             </div>
-          </CardContent>
-        </Card>
 
-        {/* Submit */}
-        <div className="flex gap-4">
-          <Link href="/events" className="flex-1">
-            <Button variant="outline" className="w-full" type="button">
-              Cancel
-            </Button>
-          </Link>
-          <Button
-            type="submit"
-            className="flex-1"
-            size="lg"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Creating Event...
-              </>
-            ) : (
-              "Create Event"
-            )}
-          </Button>
+            {/* Submit */}
+            <button
+              type="submit"
+              disabled={submitting || !form.name || !form.date}
+              className="w-full py-4 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-xl text-white font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed hover:from-purple-600 hover:to-cyan-600 transition-all flex items-center justify-center gap-2"
+            >
+              {submitting ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Deploying to Sui...
+                </>
+              ) : !isConnected ? (
+                'Connect Wallet to Continue'
+              ) : (
+                <>
+                  <Sparkles className="h-5 w-5" />
+                  Create Event
+                  <ArrowRight className="h-5 w-5" />
+                </>
+              )}
+            </button>
+          </form>
+
+          {/* Sidebar — Benefits */}
+          <div className="space-y-6">
+            <div className="bg-white/[0.03] border border-white/5 rounded-xl p-6">
+              <h3 className="text-white font-semibold mb-4">What You Get</h3>
+              <ul className="space-y-3">
+                {[
+                  { icon: <Shield className="h-4 w-4 text-emerald-400" />, text: 'Impossible to counterfeit' },
+                  { icon: <Zap className="h-4 w-4 text-amber-400" />, text: '<2 second door verification' },
+                  { icon: <Percent className="h-4 w-4 text-purple-400" />, text: 'Automatic royalty on every resale' },
+                  { icon: <Users className="h-4 w-4 text-cyan-400" />, text: 'Real-time attendance tracking' },
+                ].map((item, i) => (
+                  <li key={i} className="flex items-center gap-3 text-sm text-gray-300">
+                    {item.icon}
+                    {item.text}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="bg-gradient-to-br from-purple-500/10 to-cyan-500/10 border border-purple-500/20 rounded-xl p-6">
+              <h3 className="text-white font-semibold mb-2">Free Forever</h3>
+              <p className="text-sm text-gray-400">
+                No platform fees. No hidden costs. You only pay the Sui network gas — usually less than $0.01.
+              </p>
+            </div>
+          </div>
         </div>
-      </form>
+      </div>
     </div>
   );
 }

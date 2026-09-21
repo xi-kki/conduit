@@ -1,319 +1,210 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { useConduitWallet } from "@/lib/hooks";
-import { formatSui, formatDate, formatTime } from "@/lib/utils";
-import {
-  BarChart3,
-  Users,
+import { useState, useEffect } from 'react';
+import { useConduit } from '@/lib/useConduit';
+import Link from 'next/link';
+import { 
+  Plus, 
+  QrCode, 
+  BarChart3, 
+  Users, 
+  Ticket, 
   DollarSign,
+  ArrowRight,
   TrendingUp,
-  Plus,
-  Eye,
-  Edit,
   Wallet,
-  Ticket,
-  ArrowUpRight,
-  Calendar,
-  QrCode,
-} from "lucide-react";
-import Link from "next/link";
-import type { Event } from "@/lib/types";
-
-// Mock organizer events
-const MOCK_ORGANIZER_EVENTS: (Event & { revenue: number; check_ins: number })[] = [
-  {
-    id: "1",
-    name: "Sui Builder House SF",
-    description: "Building day",
-    image_url: "",
-    start_time: Date.now() + 86400000 * 3,
-    end_time: Date.now() + 86400000 * 4,
-    venue: "San Francisco, CA",
-    organizer: "0x1234",
-    ticket_price: 0,
-    resale_price_cap: 0,
-    royalty_bps: 500,
-    total_supply: 200,
-    tickets_sold: 156,
-    category: "meetup",
-    is_active: true,
-    revenue: 0,
-    check_ins: 0,
-  },
-  {
-    id: "2",
-    name: "Web3 Conference 2024",
-    description: "Premier conference",
-    image_url: "",
-    start_time: Date.now() + 86400000 * 7,
-    end_time: Date.now() + 86400000 * 9,
-    venue: "New York, NY",
-    organizer: "0x1234",
-    ticket_price: 50000000000,
-    resale_price_cap: 75000000000,
-    royalty_bps: 1000,
-    total_supply: 500,
-    tickets_sold: 342,
-    category: "conference",
-    is_active: true,
-    revenue: 17100000000000,
-    check_ins: 128,
-  },
-];
+  Sparkles,
+} from 'lucide-react';
 
 export default function DashboardPage() {
-  const { isConnected, connectWallet } = useConduitWallet();
-  const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
+  const { 
+    isConnected, 
+    connectWallet, 
+    organizerEvents, 
+    loadOrganizerEvents,
+    truncateAddress,
+    address,
+  } = useConduit();
 
-  // Calculate stats
-  const totalEvents = MOCK_ORGANIZER_EVENTS.length;
-  const totalTicketsSold = MOCK_ORGANIZER_EVENTS.reduce(
-    (sum, e) => sum + e.tickets_sold,
-    0
-  );
-  const totalRevenue = MOCK_ORGANIZER_EVENTS.reduce(
-    (sum, e) => sum + e.revenue,
-    0
-  );
-  const totalCheckIns = MOCK_ORGANIZER_EVENTS.reduce(
-    (sum, e) => sum + e.check_ins,
-    0
-  );
+  useEffect(() => {
+    if (isConnected) loadOrganizerEvents();
+  }, [isConnected, loadOrganizerEvents]);
 
   if (!isConnected) {
     return (
-      <div className="container mx-auto px-4 py-16 text-center">
-        <div className="max-w-md mx-auto">
-          <div className="h-16 w-16 rounded-full bg-conduit-100 flex items-center justify-center mx-auto mb-4">
-            <BarChart3 className="h-8 w-8 text-conduit-600" />
+      <div className="min-h-screen bg-[#0a0a12] flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto px-4">
+          <div className="inline-flex h-20 w-20 rounded-2xl bg-white/5 items-center justify-center mb-6">
+            <Wallet className="h-10 w-10 text-gray-600" />
           </div>
-          <h1 className="text-2xl font-bold mb-2">Organizer Dashboard</h1>
-          <p className="text-muted-foreground mb-6">
-            Connect your wallet to manage your events.
+          <h1 className="text-3xl font-bold text-white mb-3">
+            Organizer Dashboard
+          </h1>
+          <p className="text-gray-400 mb-8">
+            Manage your events, track ticket sales, and scan attendees — 
+            all from one place.
           </p>
-          <Button onClick={connectWallet} size="lg">
+          <button
+            onClick={connectWallet}
+            className="px-8 py-4 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-xl text-white font-semibold text-lg"
+          >
             Connect Wallet
-          </Button>
+          </button>
         </div>
       </div>
     );
   }
 
+  const totalTickets = organizerEvents.reduce((sum, e) => sum + e.tickets_sold, 0);
+  const totalRevenue = organizerEvents.reduce((sum, e) => sum + (e.ticket_price * e.tickets_sold), 0);
+  const totalCapacity = organizerEvents.reduce((sum, e) => sum + e.total_supply, 0);
+
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="min-h-screen bg-[#0a0a12]">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold">Organizer Dashboard</h1>
-          <p className="text-muted-foreground mt-2">
-            Manage your events and track performance
-          </p>
-        </div>
-        <Link href="/create">
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            Create Event
-          </Button>
-        </Link>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Total Events</p>
-                <p className="text-3xl font-bold">{totalEvents}</p>
-              </div>
-              <div className="h-10 w-10 rounded-lg bg-conduit-100 flex items-center justify-center">
-                <Ticket className="h-5 w-5 text-conduit-600" />
-              </div>
+      <div className="relative border-b border-white/5 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 via-transparent to-cyan-500/5" />
+        <div className="relative max-w-6xl mx-auto px-4 py-12">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div>
+              <h1 className="text-4xl font-bold text-white mb-2">
+                Welcome back
+              </h1>
+              <p className="text-gray-400 font-mono">{truncateAddress(address || '')}</p>
             </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Tickets Sold</p>
-                <p className="text-3xl font-bold">{totalTicketsSold}</p>
-              </div>
-              <div className="h-10 w-10 rounded-lg bg-sui-100 flex items-center justify-center">
-                <Users className="h-5 w-5 text-sui-600" />
-              </div>
+            <div className="flex gap-3">
+              <Link href="/dashboard/scan">
+                <button className="px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-white font-medium inline-flex items-center gap-2 hover:bg-white/10 transition-all">
+                  <QrCode className="h-4 w-4" />
+                  Scan Tickets
+                </button>
+              </Link>
+              <Link href="/create">
+                <button className="px-4 py-2 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-xl text-white font-medium inline-flex items-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  New Event
+                </button>
+              </Link>
             </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Revenue</p>
-                <p className="text-3xl font-bold">
-                  {totalRevenue > 0 ? formatSui(totalRevenue) : "0"}{" "}
-                  <span className="text-lg text-muted-foreground">SUI</span>
-                </p>
-              </div>
-              <div className="h-10 w-10 rounded-lg bg-emerald-100 flex items-center justify-center">
-                <DollarSign className="h-5 w-5 text-emerald-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Check-ins</p>
-                <p className="text-3xl font-bold">{totalCheckIns}</p>
-              </div>
-              <div className="h-10 w-10 rounded-lg bg-violet-100 flex items-center justify-center">
-                <QrCode className="h-5 w-5 text-violet-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Events List */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span>Your Events</span>
-            <Badge variant="secondary">{totalEvents} events</Badge>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {MOCK_ORGANIZER_EVENTS.map((event) => {
-              const soldPercentage = (event.tickets_sold / event.total_supply) * 100;
-              const isPast = event.end_time < Date.now();
-
-              return (
-                <div
-                  key={event.id}
-                  className="flex items-center justify-between p-4 rounded-lg border hover:bg-muted/50 transition-colors"
-                >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-semibold">{event.name}</h3>
-                      {isPast ? (
-                        <Badge variant="secondary">Ended</Badge>
-                      ) : event.is_active ? (
-                        <Badge variant="success">Active</Badge>
-                      ) : (
-                        <Badge variant="outline">Draft</Badge>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        {formatDate(event.start_time)}
-                      </span>
-                      <span>{event.venue}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-8">
-                    {/* Progress */}
-                    <div className="text-right">
-                      <div className="text-sm font-medium">
-                        {event.tickets_sold} / {event.total_supply}
-                      </div>
-                      <div className="w-24 h-1.5 bg-muted rounded-full mt-1">
-                        <div
-                          className="h-full bg-conduit-600 rounded-full"
-                          style={{ width: `${soldPercentage}%` }}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Revenue */}
-                    <div className="text-right w-24">
-                      <div className="text-sm font-medium">
-                        {event.revenue > 0 ? formatSui(event.revenue) : "—"}
-                      </div>
-                      <div className="text-xs text-muted-foreground">SUI</div>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex gap-2">
-                      <Link href={`/events/${event.id}`}>
-                        <Button variant="ghost" size="icon">
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </Link>
-                      <Link href={`/dashboard/scan`}>
-                        <Button variant="ghost" size="icon">
-                          <QrCode className="h-4 w-4" />
-                        </Button>
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      {/* Quick Actions */}
-      <div className="grid md:grid-cols-3 gap-4 mt-8">
-        <Link href="/dashboard/scan">
-          <Card className="hover:shadow-md transition-shadow cursor-pointer">
-            <CardContent className="p-6 flex items-center gap-4">
-              <div className="h-12 w-12 rounded-lg bg-violet-100 flex items-center justify-center">
-                <QrCode className="h-6 w-6 text-violet-600" />
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        {/* Stats Overview */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          {[
+            { icon: <Ticket className="h-5 w-5 text-purple-400" />, label: 'Events Created', value: organizerEvents.length },
+            { icon: <Users className="h-5 w-5 text-cyan-400" />, label: 'Tickets Sold', value: totalTickets },
+            { icon: <DollarSign className="h-5 w-5 text-emerald-400" />, label: 'Total Revenue', value: `${(totalRevenue / 1_000_000_000).toFixed(1)} SUI` },
+            { icon: <TrendingUp className="h-5 w-5 text-amber-400" />, label: 'Fill Rate', value: totalCapacity > 0 ? `${Math.round((totalTickets / totalCapacity) * 100)}%` : '0%' },
+          ].map((stat, i) => (
+            <div key={i} className="bg-white/[0.03] border border-white/5 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-2">
+                {stat.icon}
+                <span className="text-xs text-gray-500">{stat.label}</span>
               </div>
-              <div>
-                <h3 className="font-semibold">Venue Scanner</h3>
-                <p className="text-sm text-muted-foreground">
-                  Scan tickets at the door
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
+              <div className="text-2xl font-bold text-white">{stat.value}</div>
+            </div>
+          ))}
+        </div>
 
-        <Link href="/create">
-          <Card className="hover:shadow-md transition-shadow cursor-pointer">
-            <CardContent className="p-6 flex items-center gap-4">
-              <div className="h-12 w-12 rounded-lg bg-conduit-100 flex items-center justify-center">
-                <Plus className="h-6 w-6 text-conduit-600" />
+        {/* Quick Actions */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          {[
+            { 
+              href: '/create', 
+              icon: <Sparkles className="h-6 w-6" />, 
+              title: 'Create Event', 
+              desc: 'Launch a new event in under 5 minutes',
+              color: 'from-purple-500 to-cyan-500',
+            },
+            { 
+              href: '/dashboard/scan', 
+              icon: <QrCode className="h-6 w-6" />, 
+              title: 'Scan Tickets', 
+              desc: 'Verify attendees at the door',
+              color: 'from-cyan-500 to-blue-500',
+            },
+            { 
+              href: '/dashboard/analytics', 
+              icon: <BarChart3 className="h-6 w-6" />, 
+              title: 'View Analytics', 
+              desc: 'Track sales, attendance, and revenue',
+              color: 'from-blue-500 to-purple-500',
+            },
+          ].map((action, i) => (
+            <Link key={i} href={action.href}>
+              <div className="group p-6 bg-white/[0.03] border border-white/5 rounded-xl hover:border-white/20 hover:bg-white/[0.06] transition-all cursor-pointer">
+                <div className={`inline-flex h-12 w-12 rounded-xl bg-gradient-to-br ${action.color} items-center justify-center text-white mb-4`}>
+                  {action.icon}
+                </div>
+                <h3 className="text-white font-semibold mb-1 group-hover:text-purple-400 transition-colors">
+                  {action.title}
+                </h3>
+                <p className="text-sm text-gray-500">{action.desc}</p>
               </div>
-              <div>
-                <h3 className="font-semibold">Create Event</h3>
-                <p className="text-sm text-muted-foreground">
-                  Launch a new event
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
+            </Link>
+          ))}
+        </div>
 
-        <Link href="/dashboard/analytics">
-          <Card className="hover:shadow-md transition-shadow cursor-pointer">
-            <CardContent className="p-6 flex items-center gap-4">
-              <div className="h-12 w-12 rounded-lg bg-sui-100 flex items-center justify-center">
-                <BarChart3 className="h-6 w-6 text-sui-600" />
-              </div>
-              <div>
-                <h3 className="font-semibold">Analytics</h3>
-                <p className="text-sm text-muted-foreground">
-                  View detailed insights
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
+        {/* Events List */}
+        <div className="mb-6">
+          <h2 className="text-xl font-bold text-white mb-4">Your Events</h2>
+        </div>
+
+        {organizerEvents.length > 0 ? (
+          <div className="space-y-4">
+            {organizerEvents.map((event) => (
+              <Link key={event.id} href={`/events/${event.id}`}>
+                <div className="group flex items-center gap-6 p-4 bg-white/[0.03] border border-white/5 rounded-xl hover:border-white/20 hover:bg-white/[0.06] transition-all cursor-pointer">
+                  <div className="h-16 w-16 rounded-xl bg-gradient-to-br from-purple-500/20 to-cyan-500/20 flex items-center justify-center shrink-0">
+                    <Ticket className="h-6 w-6 text-purple-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-white font-semibold group-hover:text-purple-400 transition-colors truncate">
+                      {event.name}
+                    </h3>
+                    <p className="text-sm text-gray-500 truncate">{event.venue}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-white font-medium">{event.tickets_sold} / {event.total_supply}</p>
+                    <p className="text-xs text-gray-500">tickets sold</p>
+                  </div>
+                  <div className="text-right shrink-0 w-20">
+                    <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-gradient-to-r from-purple-500 to-cyan-500 rounded-full"
+                        style={{ width: `${event.total_supply > 0 ? (event.tickets_sold / event.total_supply) * 100 : 0}%` }}
+                      />
+                    </div>
+                  </div>
+                  <ArrowRight className="h-5 w-5 text-gray-600 group-hover:text-purple-400 transition-colors shrink-0" />
+                </div>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-16">
+            <div className="inline-flex h-16 w-16 rounded-2xl bg-white/5 items-center justify-center mb-6">
+              <Ticket className="h-8 w-8 text-gray-600" />
+            </div>
+            <h3 className="text-xl font-semibold text-white mb-2">
+              No events yet
+            </h3>
+            <p className="text-gray-500 mb-6 max-w-md mx-auto">
+              Create your first on-chain event and start selling 
+              fraud-proof NFT tickets in minutes.
+            </p>
+            <Link href="/create">
+              <button className="px-6 py-3 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-xl text-white font-medium inline-flex items-center gap-2">
+                <Sparkles className="h-4 w-4" />
+                Create Your First Event
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );

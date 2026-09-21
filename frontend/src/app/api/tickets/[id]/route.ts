@@ -6,9 +6,10 @@ const tickets: any[] = [];
 // GET /api/tickets/:id - Get ticket by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const ticket = tickets.find((t) => t.id === params.id);
+  const { id } = await params;
+  const ticket = tickets.find((t) => t.id === id);
 
   if (!ticket) {
     return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
@@ -20,9 +21,10 @@ export async function GET(
 // PATCH /api/tickets/:id - Update ticket (e.g., check-in)
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const ticketIndex = tickets.findIndex((t) => t.id === params.id);
+  const { id } = await params;
+  const ticketIndex = tickets.findIndex((t) => t.id === id);
 
   if (ticketIndex === -1) {
     return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
@@ -44,9 +46,10 @@ export async function PATCH(
 // POST /api/tickets/:id/checkin - Check in a ticket
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const ticketIndex = tickets.findIndex((t) => t.id === params.id);
+  const { id } = await params;
+  const ticketIndex = tickets.findIndex((t) => t.id === id);
 
   if (ticketIndex === -1) {
     return NextResponse.json({ error: "Ticket not found" }, { status: 404 });

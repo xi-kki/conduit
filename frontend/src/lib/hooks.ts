@@ -1,34 +1,35 @@
 "use client";
 
 import { useCallback } from "react";
-import { useWalletKit } from "@mysten/dapp-kit";
+import { useCurrentAccount, useDisconnectWallet } from "@mysten/dapp-kit";
 
 /**
  * Hook for wallet connection with proper error handling
- * Use this instead of directly calling connect()
+ * The connect modal should be triggered via ConnectModal component
  */
 export function useConduitWallet() {
-  const walletKit = useWalletKit();
+  const currentAccount = useCurrentAccount();
+  const { mutateAsync: disconnectAsync } = useDisconnectWallet();
 
   const connectWallet = useCallback(() => {
-    // Open the connect modal - user picks their wallet
-    walletKit.connect();
-  }, [walletKit]);
+    // This will be handled by ConnectModal component
+    // The actual connection is triggered by the modal
+    console.log("Connect wallet triggered - use ConnectModal component");
+  }, []);
 
   const disconnectWallet = useCallback(() => {
-    walletKit.disconnect();
-  }, [walletKit]);
+    disconnectAsync();
+  }, [disconnectAsync]);
 
   const truncateAddress = useCallback((address: string) => {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   }, []);
 
   return {
-    ...walletKit,
     connectWallet,
     disconnectWallet,
     truncateAddress,
-    isConnected: !!walletKit.currentAccount,
-    address: walletKit.currentAccount?.address,
+    isConnected: !!currentAccount,
+    address: currentAccount?.address,
   };
 }

@@ -2,28 +2,47 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================
+   CONDUIT — Global Theme & Animations
+   ============================================ */
+
 :root {
-  --foreground-rgb: 15, 23, 42;
-  --background-start-rgb: 248, 250, 252;
-  --background-end-rgb: 255, 255, 255;
+  --conduit-purple: #8B5CF6;
+  --conduit-cyan: #06B6D4;
+  --conduit-blue: #3B82F6;
+  --conduit-green: #10B981;
+  --conduit-dark: #0a0a12;
+  --background: 240 10% 6%;
+  --foreground: 210 40% 96%;
+  --border: 240 4% 16%;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --foreground-rgb: 248, 250, 252;
-    --background-start-rgb: 15, 23, 42;
-    --background-end-rgb: 30, 41, 59;
-  }
-}
-
+/* Base dark theme */
 body {
-  color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+  background: #0a0a12;
+  color: #e2e8f0;
+  overflow-x: hidden;
+}
+
+/* Selection color */
+::selection {
+  background: rgba(139, 92, 246, 0.3);
+  color: white;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(139, 92, 246, 0.3);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 92, 246, 0.5);
 }
 
 @layer base {
@@ -39,4 +58,177 @@ body {
   .text-balance {
     text-wrap: balance;
   }
+}
+
+/* ============================================
+   CONDUIT ANIMATIONS
+   ============================================ */
+
+/* Pulse glow for nodes */
+@keyframes conduitPulse {
+  0%, 100% { 
+    box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.4);
+  }
+  50% { 
+    box-shadow: 0 0 20px 4px rgba(139, 92, 246, 0.2);
+  }
+}
+
+/* Data flow along pipes */
+@keyframes dataFlow {
+  0% { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: -24; }
+}
+
+/* Float up (particles) */
+@keyframes conduitFloat {
+  0% { 
+    transform: translateY(0) scale(1);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.6;
+  }
+  90% {
+    opacity: 0.6;
+  }
+  100% { 
+    transform: translateY(-200px) scale(0.5);
+    opacity: 0;
+  }
+}
+
+/* Horizontal slide */
+@keyframes conduitSlide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* Border glow animation */
+@keyframes borderGlow {
+  0%, 100% { 
+    border-color: rgba(139, 92, 246, 0.2);
+  }
+  50% { 
+    border-color: rgba(6, 182, 212, 0.4);
+  }
+}
+
+/* Text shimmer */
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+/* Node pulse */
+@keyframes nodePulse {
+  0%, 100% { 
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  50% { 
+    transform: scale(1.5);
+    opacity: 0.2;
+  }
+}
+
+/* ============================================
+   CONDUIT COMPONENT CLASSES
+   ============================================ */
+
+/* Conduit card with animated border */
+.conduit-card {
+  position: relative;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+
+.conduit-card:hover {
+  border-color: rgba(139, 92, 246, 0.3);
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 0 30px rgba(139, 92, 246, 0.1);
+}
+
+/* Conduit glow text */
+.conduit-glow {
+  text-shadow: 0 0 20px rgba(139, 92, 246, 0.5);
+}
+
+/* Conduit pipe decoration */
+.conduit-pipe {
+  position: relative;
+}
+
+.conduit-pipe::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--conduit-purple), var(--conduit-cyan), transparent);
+  opacity: 0.3;
+  animation: dataFlow 3s linear infinite;
+}
+
+/* Flowing border effect */
+.conduit-flow-border {
+  position: relative;
+  overflow: hidden;
+}
+
+.conduit-flow-border::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    var(--conduit-purple) 60deg,
+    var(--conduit-cyan) 120deg,
+    transparent 180deg
+  );
+  border-radius: inherit;
+  z-index: -1;
+  animation: spin 4s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Hide scrollbar for horizontal scroll */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Line clamp utilities */
+.line-clamp-1 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+}
+
+.line-clamp-2 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.line-clamp-3 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
 }

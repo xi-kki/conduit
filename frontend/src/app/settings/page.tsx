@@ -1,261 +1,175 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { useConduitWallet } from "@/lib/hooks";
-import {
-  Bell,
-  Mail,
-  Shield,
-  User,
-  Wallet,
-  CheckCircle,
-  Save,
-} from "lucide-react";
+import { useConduit } from '@/lib/useConduit';
+import { 
+  Wallet, 
+  Copy, 
+  ExternalLink, 
+  Shield, 
+  Wifi, 
+  WifiOff,
+  Check,
+  Globe,
+  Lock,
+  Eye,
+} from 'lucide-react';
+import { useState } from 'react';
 
 export default function SettingsPage() {
-  const { isConnected, address, connectWallet } = useConduitWallet();
-  const [saved, setSaved] = useState(false);
-  const [notifications, setNotifications] = useState({
-    email_purchases: true,
-    email_reminders: true,
-    email_promotions: false,
-    push_purchases: true,
-    push_reminders: true,
-    push_promotions: false,
-  });
+  const { isConnected, address, connectWallet, disconnectWallet, truncateAddress, isDeployed } = useConduit();
+  const [copied, setCopied] = useState(false);
 
-  const handleSave = async () => {
-    setSaved(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setSaved(false);
+  const copyAddress = () => {
+    if (address) {
+      navigator.clipboard.writeText(address);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   if (!isConnected) {
     return (
-      <div className="container mx-auto px-4 py-16 text-center">
-        <div className="max-w-md mx-auto">
-          <div className="h-16 w-16 rounded-full bg-conduit-100 flex items-center justify-center mx-auto mb-4">
-            <Wallet className="h-8 w-8 text-conduit-600" />
+      <div className="min-h-screen bg-[#0a0a12] flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto px-4">
+          <div className="inline-flex h-20 w-20 rounded-2xl bg-white/5 items-center justify-center mb-6">
+            <Wallet className="h-10 w-10 text-gray-600" />
           </div>
-          <h1 className="text-2xl font-bold mb-2">Connect Your Wallet</h1>
-          <p className="text-muted-foreground mb-6">
-            Connect your wallet to access settings.
+          <h1 className="text-3xl font-bold text-white mb-3">
+            Wallet Settings
+          </h1>
+          <p className="text-gray-400 mb-8">
+            Connect your wallet to manage settings and view your on-chain identity.
           </p>
-          <Button onClick={connectWallet} size="lg">
+          <button
+            onClick={connectWallet}
+            className="px-8 py-4 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-xl text-white font-semibold text-lg"
+          >
             Connect Wallet
-          </Button>
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-2xl">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">Settings</h1>
-        <p className="text-muted-foreground mt-2">
-          Manage your account and preferences
-        </p>
+    <div className="min-h-screen bg-[#0a0a12]">
+      {/* Header */}
+      <div className="relative border-b border-white/5 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 via-transparent to-cyan-500/5" />
+        <div className="relative max-w-4xl mx-auto px-4 py-12">
+          <h1 className="text-4xl font-bold text-white mb-2">
+            Settings
+          </h1>
+          <p className="text-gray-400">
+            Manage your wallet, network, and preferences.
+          </p>
+        </div>
       </div>
 
-      {/* Profile */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <User className="h-5 w-5" />
-            Profile
-          </CardTitle>
-          <CardDescription>
-            Your public profile information
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <label className="text-sm font-medium mb-2 block">Display Name</label>
-            <Input placeholder="Enter your name" />
-          </div>
-          <div>
-            <label className="text-sm font-medium mb-2 block">Bio</label>
-            <textarea
-              className="w-full min-h-[80px] rounded-lg border bg-background px-3 py-2 text-sm"
-              placeholder="Tell us about yourself..."
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium mb-2 block">Website</label>
-            <Input type="url" placeholder="https://..." />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Notifications */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Bell className="h-5 w-5" />
-            Notifications
-          </CardTitle>
-          <CardDescription>
-            Choose what notifications you receive
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-3">
-            <h4 className="font-medium flex items-center gap-2">
-              <Mail className="h-4 w-4" />
-              Email Notifications
-            </h4>
-            {[
-              { key: "email_purchases", label: "Purchase confirmations" },
-              { key: "email_reminders", label: "Event reminders" },
-              { key: "email_promotions", label: "Promotions & news" },
-            ].map((item) => (
-              <label
-                key={item.key}
-                className="flex items-center justify-between py-2"
-              >
-                <span className="text-sm">{item.label}</span>
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 rounded border-gray-300"
-                  checked={
-                    notifications[item.key as keyof typeof notifications]
-                  }
-                  onChange={(e) =>
-                    setNotifications({
-                      ...notifications,
-                      [item.key]: e.target.checked,
-                    })
-                  }
-                />
-              </label>
-            ))}
-          </div>
-
-          <div className="space-y-3 pt-4 border-t">
-            <h4 className="font-medium flex items-center gap-2">
-              <Bell className="h-4 w-4" />
-              Push Notifications
-            </h4>
-            {[
-              { key: "push_purchases", label: "Purchase confirmations" },
-              { key: "push_reminders", label: "Event reminders" },
-              { key: "push_promotions", label: "Promotions & news" },
-            ].map((item) => (
-              <label
-                key={item.key}
-                className="flex items-center justify-between py-2"
-              >
-                <span className="text-sm">{item.label}</span>
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 rounded border-gray-300"
-                  checked={
-                    notifications[item.key as keyof typeof notifications]
-                  }
-                  onChange={(e) =>
-                    setNotifications({
-                      ...notifications,
-                      [item.key]: e.target.checked,
-                    })
-                  }
-                />
-              </label>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Wallet */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Wallet className="h-5 w-5" />
+      <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
+        {/* Wallet Info */}
+        <div className="bg-white/[0.03] border border-white/5 rounded-xl p-6">
+          <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+            <Wallet className="h-5 w-5 text-purple-400" />
             Wallet
-          </CardTitle>
-          <CardDescription>
-            Your connected wallet information
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {address && (
-            <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
+          </h2>
+          
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-4 bg-white/[0.03] rounded-xl">
+              <div>
+                <p className="text-sm text-gray-500">Connected Address</p>
+                <p className="text-white font-mono text-sm mt-1">{address}</p>
+              </div>
+              <button
+                onClick={copyAddress}
+                className="px-3 py-2 bg-white/5 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/10 transition-all inline-flex items-center gap-2"
+              >
+                {copied ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
+                {copied ? 'Copied' : 'Copy'}
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between p-4 bg-white/[0.03] rounded-xl">
+              <div>
+                <p className="text-sm text-gray-500">View on SuiScan</p>
+                <p className="text-xs text-gray-600 mt-1">See your full transaction history</p>
+              </div>
+              <a
+                href={`https://suiscan.xyz/testnet/account/${address}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3 py-2 bg-white/5 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/10 transition-all inline-flex items-center gap-2"
+              >
+                <ExternalLink className="h-4 w-4" />
+                SuiScan
+              </a>
+            </div>
+
+            <button
+              onClick={disconnectWallet}
+              className="w-full py-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 font-medium hover:bg-red-500/20 transition-all"
+            >
+              Disconnect Wallet
+            </button>
+          </div>
+        </div>
+
+        {/* Network Status */}
+        <div className="bg-white/[0.03] border border-white/5 rounded-xl p-6">
+          <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+            <Globe className="h-5 w-5 text-cyan-400" />
+            Network
+          </h2>
+          
+          <div className="space-y-3">
+            <div className="flex items-center justify-between p-4 bg-white/[0.03] rounded-xl">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-sui-100 flex items-center justify-center">
-                  <Wallet className="h-5 w-5 text-sui-600" />
-                </div>
+                {isDeployed ? (
+                  <Wifi className="h-5 w-5 text-emerald-400" />
+                ) : (
+                  <WifiOff className="h-5 w-5 text-gray-500" />
+                )}
                 <div>
-                  <div className="font-medium">Connected Wallet</div>
-                  <div className="text-sm text-muted-foreground font-mono">
-                    {address.slice(0, 10)}...{address.slice(-6)}
-                  </div>
+                  <p className="text-white font-medium">Sui Testnet</p>
+                  <p className="text-xs text-gray-500">
+                    {isDeployed ? 'Contract deployed and connected' : 'Demo mode — contract not deployed'}
+                  </p>
                 </div>
               </div>
-              <Badge variant="success">
-                <CheckCircle className="h-3 w-3 mr-1" />
-                Connected
-              </Badge>
+              <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                isDeployed 
+                  ? 'bg-emerald-500/20 text-emerald-400' 
+                  : 'bg-gray-500/20 text-gray-400'
+              }`}>
+                {isDeployed ? 'Live' : 'Demo'}
+              </span>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </div>
+        </div>
 
-      {/* Security */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5" />
+        {/* Security */}
+        <div className="bg-white/[0.03] border border-white/5 rounded-xl p-6">
+          <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+            <Shield className="h-5 w-5 text-emerald-400" />
             Security
-          </CardTitle>
-          <CardDescription>
-            Manage your security preferences
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between py-2">
-            <div>
-              <div className="font-medium">Two-Factor Authentication</div>
-              <div className="text-sm text-muted-foreground">
-                Add an extra layer of security
+          </h2>
+          
+          <div className="space-y-3">
+            {[
+              { icon: <Lock className="h-4 w-4 text-purple-400" />, title: 'Non-Custodial', desc: 'Your keys, your crypto. Conduit never holds your assets.' },
+              { icon: <Eye className="h-4 w-4 text-cyan-400" />, title: 'On-Chain Verified', desc: 'All transactions are publicly verifiable on Sui.' },
+              { icon: <Shield className="h-4 w-4 text-emerald-400" />, title: 'Smart Contract Audited', desc: 'Move contracts follow Sui security best practices.' },
+            ].map((item, i) => (
+              <div key={i} className="flex items-center gap-4 p-4 bg-white/[0.03] rounded-xl">
+                {item.icon}
+                <div>
+                  <p className="text-white text-sm font-medium">{item.title}</p>
+                  <p className="text-xs text-gray-500">{item.desc}</p>
+                </div>
               </div>
-            </div>
-            <Button variant="outline" size="sm">
-              Enable
-            </Button>
+            ))}
           </div>
-          <div className="flex items-center justify-between py-2">
-            <div>
-              <div className="font-medium">Session History</div>
-              <div className="text-sm text-muted-foreground">
-                View and manage active sessions
-              </div>
-            </div>
-            <Button variant="outline" size="sm">
-              View
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Save Button */}
-      <div className="flex justify-end">
-        <Button onClick={handleSave} disabled={saved}>
-          {saved ? (
-            <>
-              <CheckCircle className="h-4 w-4 mr-2" />
-              Saved!
-            </>
-          ) : (
-            <>
-              <Save className="h-4 w-4 mr-2" />
-              Save Changes
-            </>
-          )}
-        </Button>
+        </div>
       </div>
     </div>
   );
